@@ -1,35 +1,43 @@
 # Initialize a software development workspace on Windows.
 
 Set-StrictMode -Version Latest
-$ErrorActionPreference = "Stop"
-
 # Import Modules
 
 Import-Module Dotenv -Force
-Import-Module Git -Force
 
 # Internal Advanced Function
 
-function Initialize-Scopes {
+function Import-EnvironmentVariable {
     [CmdletBinding()]
     param ()
 
-    $Script:WingetPackages = @(
+    begin {
+        $FilePath = Join-Path -Path (Split-Path $PSScriptRoot -Parent) -ChildPath ".env"
+    }
+
+    process {
+        Read-Dotenv -FilePath $FilePath
+        $Env:ENV_MESSAGE = Get-Dotenv -VariableName "ENV_MESSAGE"
+    }
+
+    end {
+        Write-Verbose "Env:ENV_MESSAGE = $Env:ENV_MESSAGE"
+    }
+}
+
+function Initialize-ScopeVariable {
+    [CmdletBinding()]
+    param ()
+
+    $Script:WingetPackage = @(
         @{ Id = "ezwinports.make"        ; Info = "" },
-        @{ Id = "Git.Git"                ; Info = "" },
-        @{ Id = "Git.GitLFS"             ; Info = "" },
-        @{ Id = "Gpg4win.Gpg4win"        ; Info = "" },
-        @{ Id = "jqlang.jq"              ; Info = "" },
         @{ Id = "Kitware.Ninja"          ; Info = "" },
         @{ Id = "ccache.ccache"          ; Info = "" },
         @{ Id = "Python.Python.3.12"     ; Info = "" },
-        @{ Id = "dos2unix.dos2unix"      ; Info = "" },
-        @{ Id = "7zip.7zip"              ; Info = "" },
-        @{ Id = "GnuWin32.Wget"          ; Info = "" },
-        @{ Id = "Microsoft.DotNet.SDK.8" ; Info = "" }
+        @{ Id = "7zip.7zip"              ; Info = "" }
     )
 
-    $Script:PipPackages = @(
+    $Script:PipPackage = @(
         @{
             Name    = "sbom"
             Version = "1.0.0"
@@ -38,12 +46,12 @@ function Initialize-Scopes {
         }
     )
 
-    $Script:Downloads = @(
+    $Script:Download = @(
         @{
             Description = "GCC-ARM Toolchain"
             Url         = "https://developer.arm.com/-/media/Files/downloads/gnu/14.2.rel1/binrel/arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi.tar.xz"
             Version     = "14.2.rel1"
-            Path        = "C:\Tools\arm-gnu-toolchain"
+            Path        = Join-Path -Path $Env:USERPROFILE -ChildPath "AppData/Local/Programs/Tools/arm-gnu-toolchain"
             Info        = ""
         },
         @{
@@ -57,31 +65,13 @@ function Initialize-Scopes {
             Description = "Sonar-Scanner CLI"
             Url         = "https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-7.1.0.4889-windows-x64.zip"
             Version     = "7.1.0.4889"
-            Path        = "C:\Tools\sonarqube"
+            Path        = Join-Path -Path $Env:USERPROFILE -ChildPath "AppData/Local/Programs/Tools/sonar-scanner"
             Info        = ""
         }
     )
 }
 
-function New-EnvironmentVariables {
-    [CmdletBinding()]
-    param ()
-
-    begin {
-        $FilePath = Join-Path -Path (Split-Path $PSScriptRoot -Parent) -ChildPath ".env"
-    }
-
-    process {
-        Read-Dotenv -FilePath $FilePath
-        $Env:PIP_ACCESS_TOKEN = Get-Dotenv -VariableName "PIP_ACCESS_TOKEN"
-    }
-
-    end {
-        Write-Host "Env:PIP_ACCESS_TOKEN = $Env:PIP_ACCESS_TOKEN"
-    }
-}
-
-function Install-Winget-Packages {
+function Install-WingetPackage {
     [CmdletBinding()]
     param (
         [Parameter(Mandatory)]
@@ -92,8 +82,9 @@ function Install-Winget-Packages {
     foreach ($pkg in $Packages) {
         $id = $pkg.Id
 
-        Write-Host "Installing Winget package: $($id)"
         try {
+            Write-Verbose "Installing Winget package: $($id)"
+
             winget install --id $id --source winget --accept-package-agreements --accept-source-agreements --silent
         } catch {
             Write-Warning "Failed to install package: $($id) - $($_.Exception.Message)"
@@ -101,7 +92,7 @@ function Install-Winget-Packages {
     }
 }
 
-function Install-Pip-Packages {
+function Install-PipPackage {
     [CmdletBinding()]
     param (
         [Parameter(Mandatory = $true)]
@@ -109,15 +100,14 @@ function Install-Pip-Packages {
         [array]$Packages
     )
 
-    # python.exe -m pip install --upgrade pip
-
     foreach ($pkg in $Packages) {
         $name = $pkg.Name
         $version = $pkg.Version
         $url = $pkg.Url
 
-        Write-Host "Installing Python package: $name"
         try {
+            Write-Verbose "Installing Python package: $name"
+
             if ($version) {
                 pip install "$name==$version" --index-url $url
             } else {
@@ -129,66 +119,107 @@ function Install-Pip-Packages {
     }
 }
 
-function Clear-Pip-Cache {
+function Clear-PipCache {
     [CmdletBinding()]
     param ()
 
-    Write-Host "Cleaning pip cache..."
     try {
+        Write-Verbose "Cleaning pip cache..."
+
         pip cache purge
     } catch {
         Write-Warning "Failed to purge pip cache - $($_.Exception.Message)"
     }
 }
 
-function Invoke-Setup-Downloads {
+function Invoke-SetupDownload {
     [CmdletBinding()]
     param (
         [Parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
-        [array] $DownloadItems
+        [array] $Downloads
     )
 
-    foreach ($item in $DownloadItems) {
+    foreach ($item in $Downloads) {
         $filename = Split-Path $item.Url -Leaf
         $filepath = $item.Path
         $url = $item.Url
         $description = $item.Description
 
-        Write-Host "[$description] Downloading from $url"
         try {
+            Write-Verbose "[$description] Downloading from $url"
+
             Invoke-WebRequest -Uri $url -OutFile $filename -ErrorAction Stop
         } catch {
             Write-Error "[$description] Failed to download: $($_.Exception.Message)"
             continue
         }
 
-        Write-Host "[$description] Download complete: $filename"
 
         switch -Wildcard ($filename) {
             "arm-gnu-toolchain-*.tar.xz" {
-                if (Test-Path $filepath) {
-                    New-Item -ItemType Directory -Force -Path $filepath | Out-Null
+                try {
+                    if (-not (Test-Path -Path $filepath)) {
+                        New-Item -ItemType Directory -Force -Path $filepath | Out-Null
+                    }
+
+                    tar -xf $filename -C $filepath --strip-components = 1
+
+                    $envPath = Join-Path -Path $filepath -ChildPath "bin"
+                    if ($Env:Path -notlike "*${envPath}*") {
+                        $Env:Path += ";$envPath"
+                    }
+
+                    Write-Verbose "[$description] Extracted to $filepath"
+                } catch {
+                    Write-Error "[$description] Failed: $($_.Exception.Message)"
+                } finally {
+                    if (Test-Path $filename) {
+                        Remove-Item -Path $filename -Force -Recurse -ErrorAction Stop
+                    }
                 }
-                tar -xf $filename -C $filepath --strip-components=1
-                Remove-Item $filename -Force
-                Write-Host "[$description] Extracted to $filepath"
             }
 
             "PowerShell-*.msi" {
-                Start-Process msiexec.exe -Wait -ArgumentList "/i `"$filename`" /quiet"
-                Remove-Item $filename -Force
-                Write-Host "[$description] Installed PowerShell"
+                try {
+                    Start-Process msiexec.exe -Wait -ArgumentList "/i `"$filename`" /quiet"
+                    Write-Verbose "[$description] Installed"
+                } catch {
+                    Write-Error "[$description] Failed: $($_.Exception.Message)"
+                } finally {
+                    if (Test-Path $filename) {
+                        Remove-Item -Path $filename -Force -Recurse -ErrorAction Stop
+                    }
+                }
             }
 
-            "sonar-scanner-cli-*.zip" {
-                if (Test-Path $filepath) {
-                    New-Item -ItemType Directory -Force -Path $filepath | Out-Null
+            "sonar-scanner-*.zip" {
+                try {
+                    if (-not (Test-Path -Path $filepath)) {
+                        New-Item -ItemType Directory -Force -Path $filepath | Out-Null
+                    }
+
+                    Expand-Archive -LiteralPath $filename -DestinationPath $filepath -Force
+
+                    $source = Get-ChildItem -Path $filepath -Directory -Filter "sonar-scanner-*" | Select-Object -First 1
+                    Get-ChildItem -Path $source.FullName -Force | ForEach-Object {
+                        Copy-Item -Path $_.FullName -Destination $filepath -Recurse -Force -ErrorAction SilentlyContinue
+                    }
+                    Remove-Item -Path $source.FullName -Force -Recurse -ErrorAction Stop
+
+                    $envPath = Join-Path -Path $filepath -ChildPath "bin"
+                    if ($Env:Path -notlike "*${envPath}*") {
+                        $Env:Path += ";$envPath"
+                    }
+
+                    Write-Verbose "[$description] Extracted and installed to $filepath"
+                } catch {
+                    Write-Error "[$description] Failed: $($_.Exception.Message)"
+                } finally {
+                    if (Test-Path $filename) {
+                        Remove-Item -Path $filename -Force -Recurse -ErrorAction Stop
+                    }
                 }
-                Expand-Archive -Path $filename -DestinationPath $filepath -Force
-                Remove-Item $filename -Force
-                $env:Path += ";$($filepath)\bin"
-                Write-Host "[$description] Extracted and installed to $filepath"
             }
 
             default {
@@ -201,12 +232,13 @@ function Invoke-Setup-Downloads {
 # Workflow
 
 try {
-    New-EnvironmentVariables
-    Initialize-Scopes
-    Install-Winget-Packages -Packages $Script:WingetPackages
-    Install-Pip-Packages -Packages $Script:PipPackages
-    Clear-Pip-Cache
-    Invoke-Setup-Downloads -DownloadItems $Script:Downloads
+    Import-EnvironmentVariable -Verbose
+    Initialize-ScopeVariable
+    Install-WingetPackage -Packages $Script:WingetPackage -Verbose
+    # NOTE c:\users\<user>\appdata\local\programs\python\python312\lib\site-packages
+    Install-PipPackage -Packages $Script:PipPackage -Verbose
+    Clear-PipCache
+    Invoke-SetupDownload -Downloads $Script:Download -Verbose
 } catch {
     Write-Error "In: $PSCommandPath Error: $_"
     $Host.SetShouldExit(1)

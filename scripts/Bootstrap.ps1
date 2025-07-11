@@ -79,15 +79,26 @@ function Install-WingetPackage {
         [array] $Packages
     )
 
-    foreach ($pkg in $Packages) {
-        $id = $pkg.Id
+    begin {
+        # Ensure winget is available
+        if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
+            Write-Error "Winget is not installed or not available in the PATH."
+            return
+        }
+    }
 
-        try {
-            Write-Verbose "Installing Winget package: $($id)"
+    process {
+        # Install each package
+        foreach ($pkg in $Packages) {
+            $id = $pkg.Id
 
-            winget install --id $id --source winget --accept-package-agreements --accept-source-agreements --silent
-        } catch {
-            Write-Warning "Failed to install package: $($id) - $($_.Exception.Message)"
+            try {
+                Write-Verbose "Installing Winget package: $($id)"
+
+                winget install --id $id --source winget --accept-package-agreements --accept-source-agreements --silent
+            } catch {
+                Write-Warning "Failed to install package: $($id) - $($_.Exception.Message)"
+            }
         }
     }
 }
@@ -100,21 +111,40 @@ function Install-PipPackage {
         [array]$Packages
     )
 
-    foreach ($pkg in $Packages) {
-        $name = $pkg.Name
-        $version = $pkg.Version
-        $url = $pkg.Url
+    begin {
+        # Ensure pip is available
+        if (-not (Get-Command pip -ErrorAction SilentlyContinue)) {
+            Write-Error "Pip is not installed or not available in the PATH."
+            return
+        }
 
+        # Ensure pip is up to date
         try {
-            Write-Verbose "Installing Python package: $name"
-
-            if ($version) {
-                pip install "$name==$version" --index-url $url
-            } else {
-                pip install $name --index-url $url
-            }
+            Write-Verbose "Upgrading pip to the latest version..."
+            pip install --upgrade pip
         } catch {
-            Write-Warning "Failed to install package: $($name) - $($_.Exception.Message)"
+            Write-Warning "Failed to upgrade pip - $($_.Exception.Message)"
+        }
+    }
+
+    process {
+        # Install each package
+        foreach ($pkg in $Packages) {
+            $name = $pkg.Name
+            $version = $pkg.Version
+            $url = $pkg.Url
+
+            try {
+                Write-Verbose "Installing Python package: $name"
+
+                if ($version) {
+                    pip install "$name==$version" --index-url $url
+                } else {
+                    pip install $name --index-url $url
+                }
+            } catch {
+                Write-Warning "Failed to install package: $($name) - $($_.Exception.Message)"
+            }
         }
     }
 }
@@ -123,12 +153,22 @@ function Clear-PipCache {
     [CmdletBinding()]
     param ()
 
-    try {
-        Write-Verbose "Cleaning pip cache..."
+    begin {
+        # Ensure pip is available
+        if (-not (Get-Command pip -ErrorAction SilentlyContinue)) {
+            Write-Error "Pip is not installed or not available in the PATH."
+            return
+        }
+    }
 
-        pip cache purge
-    } catch {
-        Write-Warning "Failed to purge pip cache - $($_.Exception.Message)"
+    process {
+        try {
+            Write-Verbose "Cleaning pip cache..."
+
+            pip cache purge
+        } catch {
+            Write-Warning "Failed to purge pip cache - $($_.Exception.Message)"
+        }
     }
 }
 

@@ -16,7 +16,7 @@ default: help
 
 help:
 ifeq ($(IS_WINDOWS),Windows_NT)
-# TODO
+	@echo "TODO Implement Windows help script"
 else
 	@awk 'BEGIN {printf "TASK\n\tA collection of task runner used in this project.\n\n"}'
 	@awk 'BEGIN {printf "USAGE\n\tmake $(shell tput -Txterm setaf 6)[target]$(shell tput -Txterm sgr0)\n\n"}' $(MAKEFILE_LIST)
@@ -29,7 +29,7 @@ bootstrap: setup
 ifeq ($(IS_WINDOWS),Windows_NT)
 	$(POWERSHELL) -File .\scripts\Bootstrap.ps1
 else
-# TODO
+	@bash ./scripts/bootstrap.sh
 endif
 .PHONY: bootstrap
 
@@ -38,16 +38,16 @@ setup:
 ifeq ($(IS_WINDOWS),Windows_NT)
 	$(POWERSHELL) -File .\scripts\Setup.ps1
 else
-# TODO
+	@bash ./scripts/setup.sh
 endif
 .PHONY: setup
 
 ## Remove development artifacts and restore the host to its pre-setup state
 teardown:
 ifeq ($(IS_WINDOWS),Windows_NT)
-# TODO
+	@echo "TODO Implement Windows teardown script"
 else
-# TODO
+	@echo "TODO Implement Linux teardown script"
 endif
 .PHONY: teardown
 
@@ -56,7 +56,7 @@ install-pwsh-analyzer:
 ifeq ($(IS_WINDOWS),Windows_NT)
 	$(POWERSHELL) -Command "Install-Module -Name PSScriptAnalyzer -Scope CurrentUser -Force -AllowClobber"
 else
-# TODO
+	@echo "TODO Implement Linux installation script for PSScriptAnalyzer"
 endif
 .PHONY: install-pwsh-analyzer
 
@@ -65,6 +65,6 @@ lint-pwsh-analyze:
 ifeq ($(IS_WINDOWS),Windows_NT)
 	$(POWERSHELL) -Command "Invoke-ScriptAnalyzer -Path $(@D) -Recurse -Severity Warning,Error | Out-String"
 else
-# TODO
+	@echo "TODO Implement Linux linting script for PowerShell"
 endif
 .PHONY: lint-pwsh-analyze

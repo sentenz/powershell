@@ -1,6 +1,7 @@
 # Initialize a software development workspace on Windows.
 
 Set-StrictMode -Version Latest
+
 # Import Modules
 
 Import-Module Dotenv -Force

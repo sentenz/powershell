@@ -15,7 +15,8 @@
 function Read-Dotenv {
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
         [string]$FilePath
     )
 
@@ -29,11 +30,27 @@ function Read-Dotenv {
     process {
         try {
             $vars = Get-Content -Path $FilePath | ForEach-Object {
-                $key, $value = $_ -split "=", 2
-                if ([string]::IsNullOrWhiteSpace($key) -or $key.Contains('#')) {
-                    continue
+                $_ = $_.Trim()
+
+                # Skip empty or full-line comments
+                if (-not $_ -or $_ -match '^\s*#') {
+                    return
                 }
-                [System.Collections.DictionaryEntry]::new($key.Trim(), $value.Trim())
+
+                # Split only on the first '='
+                $key, $value = $_ -split '=', 2
+
+                # Skip malformed lines
+                if ([string]::IsNullOrWhiteSpace($key) -or -not $value) {
+                    return
+                }
+
+                # Remove inline comment (unquoted)
+                if ($value -match '^(.*?)(\s*#.*)?$') {
+                    $value = $matches[1].Trim()
+                }
+
+                [System.Collections.DictionaryEntry]::new($key.Trim(), $value)
             }
 
             $vars | ForEach-Object {
@@ -66,7 +83,8 @@ function Read-Dotenv {
 function Get-Dotenv {
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
         [string]$VariableName
     )
 

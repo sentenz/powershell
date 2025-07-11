@@ -16,5 +16,7 @@
     "editor.detectIndentation": true,
     "editor.defaultFormatter": "ms-vscode.powershell"
   },
-  "powershell.codeFormatting.preset": "OTBS"
+  "powershell.codeFormatting.preset": "OTBS",
+  "powershell.enableProfileLoading": false,
+  "powershell.developer.editorServicesLogLevel": "Error"
 }

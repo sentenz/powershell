@@ -27,7 +27,7 @@ endif
 ## Initialize a software development workspace with requisites
 bootstrap: setup
 ifeq ($(IS_WINDOWS),Windows_NT)
-	$(POWERSHELL) -File .\scripts\Bootstrap.ps1
+	$(POWERSHELL) -File ./scripts/Bootstrap.ps1
 else
 	@bash ./scripts/bootstrap.sh
 endif
@@ -36,7 +36,7 @@ endif
 ## Configure all dependencies essential for development
 setup:
 ifeq ($(IS_WINDOWS),Windows_NT)
-	$(POWERSHELL) -File .\scripts\Setup.ps1
+	$(POWERSHELL) -File ./scripts/Setup.ps1
 else
 	@bash ./scripts/setup.sh
 endif
@@ -45,9 +45,9 @@ endif
 ## Remove development artifacts and restore the host to its pre-setup state
 teardown:
 ifeq ($(IS_WINDOWS),Windows_NT)
-	@echo "TODO Implement Windows teardown task"
+	@echo "TODO Implement Windows teardown task
 else
-	@echo "TODO Implement Linux teardown task"
+	@echo "TODO Implement Linux teardown task
 endif
 .PHONY: teardown
 

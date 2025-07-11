@@ -34,7 +34,8 @@
 function Publish-Dotnet {
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
         [string]$ProjectPath,
 
         [string]$Runtime = "win-x64",

@@ -45,9 +45,9 @@ endif
 ## Remove development artifacts and restore the host to its pre-setup state
 teardown:
 ifeq ($(IS_WINDOWS),Windows_NT)
-	@echo "TODO Implement Windows teardown script"
+	@echo "TODO Implement Windows teardown task"
 else
-	@echo "TODO Implement Linux teardown script"
+	@echo "TODO Implement Linux teardown task"
 endif
 .PHONY: teardown
 

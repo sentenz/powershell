@@ -29,48 +29,54 @@ function Initialize-ScopeVariable {
     [CmdletBinding()]
     param ()
 
-    # See https://winget.ragerworks.com/ to search for winget packages
-    $Script:WingetPackage = @(
-        @{ Id = "ezwinports.make"        ; Info = "" },
-        @{ Id = "Task.Task"              ; Info = "" },
-        @{ Id = "Ninja-build.Ninja"      ; Info = "" },
-        @{ Id = "Ccache.Ccache"          ; Info = "" },
-        @{ Id = "Python.Python.3.12"     ; Info = "" },
-        @{ Id = "7zip.7zip"              ; Info = "" }
-    )
+    begin {
+        # See https://winget.ragerworks.com/ to search for winget packages
+        $Script:WingetPackage = @(
+            @{ Id = "ezwinports.make"        ; Info = "" },
+            @{ Id = "Task.Task"              ; Info = "" },
+            @{ Id = "Ninja-build.Ninja"      ; Info = "" },
+            @{ Id = "Ccache.Ccache"          ; Info = "" },
+            @{ Id = "Python.Python.3.12"     ; Info = "" },
+            @{ Id = "7zip.7zip"              ; Info = "" }
+        )
 
-    $Script:PipPackage = @(
-        @{
-            Name    = "sbom"
-            Version = "1.0.0"
-            Url     = "https://__token__:$Env:PIP_ACCESS_TOKEN@gitlab.com/api/v4/groups/1012/-/packages/pypi/simple"
-            Info    = ""
-        }
-    )
+        $Script:PipPackage = @(
+            @{
+                Name    = "sbom"
+                Version = "1.0.0"
+                Url     = "https://__token__:$Env:PIP_ACCESS_TOKEN@gitlab.com/api/v4/groups/1012/-/packages/pypi/simple"
+                Info    = ""
+            }
+        )
 
-    $Script:Download = @(
-        @{
-            Description = "GCC-ARM Toolchain"
-            Url         = "https://developer.arm.com/-/media/Files/downloads/gnu/14.2.rel1/binrel/arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi.tar.xz"
-            Version     = "14.2.rel1"
-            Path        = Join-Path -Path $Env:USERPROFILE -ChildPath "AppData/Local/Programs/Tools/arm-gnu-toolchain"
-            Info        = ""
-        },
-        @{
-            Description = "PowerShell"
-            Url         = "https://github.com/PowerShell/PowerShell/releases/download/v7.5.0/PowerShell-7.5.0-win-x64.msi"
-            Version     = "7.5.0"
-            Path        = ""
-            Info        = ""
-        },
-        @{
-            Description = "Sonar-Scanner CLI"
-            Url         = "https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-7.1.0.4889-windows-x64.zip"
-            Version     = "7.1.0.4889"
-            Path        = Join-Path -Path $Env:USERPROFILE -ChildPath "AppData/Local/Programs/Tools/sonar-scanner"
-            Info        = ""
-        }
-    )
+        $Script:Download = @(
+            @{
+                Description = "GCC-ARM Toolchain"
+                Url         = "https://developer.arm.com/-/media/Files/downloads/gnu/14.2.rel1/binrel/arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi.tar.xz"
+                Version     = "14.2.rel1"
+                Path        = Join-Path -Path $Env:USERPROFILE -ChildPath "AppData/Local/Programs/Tools/arm-gnu-toolchain"
+                Info        = ""
+            },
+            @{
+                Description = "PowerShell"
+                Url         = "https://github.com/PowerShell/PowerShell/releases/download/v7.5.0/PowerShell-7.5.0-win-x64.msi"
+                Version     = "7.5.0"
+                Path        = ""
+                Info        = ""
+            },
+            @{
+                Description = "Sonar-Scanner CLI"
+                Url         = "https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-7.1.0.4889-windows-x64.zip"
+                Version     = "7.1.0.4889"
+                Path        = Join-Path -Path $Env:USERPROFILE -ChildPath "AppData/Local/Programs/Tools/sonar-scanner"
+                Info        = ""
+            }
+        )
+    }
+
+    process { }
+
+    end { }
 }
 
 function Install-WingetPackage {
@@ -103,6 +109,8 @@ function Install-WingetPackage {
             }
         }
     }
+
+    end { }
 }
 
 function Install-PipPackage {
@@ -149,6 +157,8 @@ function Install-PipPackage {
             }
         }
     }
+
+    end { }
 }
 
 function Clear-PipCache {
@@ -172,6 +182,8 @@ function Clear-PipCache {
             Write-Warning "Failed to purge pip cache - $($_.Exception.Message)"
         }
     }
+
+    end { }
 }
 
 function Invoke-SetupDownload {
@@ -182,93 +194,98 @@ function Invoke-SetupDownload {
         [array] $Downloads
     )
 
-    foreach ($item in $Downloads) {
-        $filename = Split-Path $item.Url -Leaf
-        $filepath = $item.Path
-        $url = $item.Url
-        $description = $item.Description
+    begin { }
 
-        try {
-            Write-Verbose "[$description] Downloading from $url"
+    process {
+        foreach ($item in $Downloads) {
+            $filename = Split-Path $item.Url -Leaf
+            $filepath = $item.Path
+            $url = $item.Url
+            $description = $item.Description
 
-            Invoke-WebRequest -Uri $url -OutFile $filename -ErrorAction Stop
-        } catch {
-            Write-Error "[$description] Failed to download: $($_.Exception.Message)"
-            continue
-        }
+            try {
+                Write-Verbose "[$description] Downloading from $url"
 
-
-        switch -Wildcard ($filename) {
-            "arm-gnu-toolchain-*.tar.xz" {
-                try {
-                    if (-not (Test-Path -Path $filepath)) {
-                        New-Item -ItemType Directory -Force -Path $filepath | Out-Null
-                    }
-
-                    tar -xf $filename -C $filepath --strip-components = 1
-
-                    $envPath = Join-Path -Path $filepath -ChildPath "bin"
-                    if ($Env:Path -notlike "*${envPath}*") {
-                        $Env:Path += ";$envPath"
-                    }
-
-                    Write-Verbose "[$description] Extracted to $filepath"
-                } catch {
-                    Write-Error "[$description] Failed: $($_.Exception.Message)"
-                } finally {
-                    if (Test-Path $filename) {
-                        Remove-Item -Path $filename -Force -Recurse -ErrorAction Stop
-                    }
-                }
+                Invoke-WebRequest -Uri $url -OutFile $filename -ErrorAction Stop
+            } catch {
+                Write-Error "[$description] Failed to download: $($_.Exception.Message)"
+                continue
             }
 
-            "PowerShell-*.msi" {
-                try {
-                    Start-Process msiexec.exe -Wait -ArgumentList "/i `"$filename`" /quiet"
-                    Write-Verbose "[$description] Installed"
-                } catch {
-                    Write-Error "[$description] Failed: $($_.Exception.Message)"
-                } finally {
-                    if (Test-Path $filename) {
-                        Remove-Item -Path $filename -Force -Recurse -ErrorAction Stop
+            switch -Wildcard ($filename) {
+                "arm-gnu-toolchain-*.tar.xz" {
+                    try {
+                        if (-not (Test-Path -Path $filepath)) {
+                            New-Item -ItemType Directory -Force -Path $filepath | Out-Null
+                        }
+
+                        tar -xf $filename -C $filepath --strip-components=1
+
+                        $envPath = Join-Path -Path $filepath -ChildPath "bin"
+                        if ($Env:Path -notlike "*${envPath}*") {
+                            $Env:Path += ";$envPath"
+                        }
+
+                        Write-Verbose "[$description] Extracted to $filepath"
+                    } catch {
+                        Write-Error "[$description] Failed: $($_.Exception.Message)"
+                    } finally {
+                        if (Test-Path $filename) {
+                            Remove-Item -Path $filename -Force -Recurse -ErrorAction Stop
+                        }
                     }
                 }
-            }
 
-            "sonar-scanner-*.zip" {
-                try {
-                    if (-not (Test-Path -Path $filepath)) {
-                        New-Item -ItemType Directory -Force -Path $filepath | Out-Null
-                    }
-
-                    Expand-Archive -LiteralPath $filename -DestinationPath $filepath -Force
-
-                    $source = Get-ChildItem -Path $filepath -Directory -Filter "sonar-scanner-*" | Select-Object -First 1
-                    Get-ChildItem -Path $source.FullName -Force | ForEach-Object {
-                        Copy-Item -Path $_.FullName -Destination $filepath -Recurse -Force -ErrorAction SilentlyContinue
-                    }
-                    Remove-Item -Path $source.FullName -Force -Recurse -ErrorAction Stop
-
-                    $envPath = Join-Path -Path $filepath -ChildPath "bin"
-                    if ($Env:Path -notlike "*${envPath}*") {
-                        $Env:Path += ";$envPath"
-                    }
-
-                    Write-Verbose "[$description] Extracted and installed to $filepath"
-                } catch {
-                    Write-Error "[$description] Failed: $($_.Exception.Message)"
-                } finally {
-                    if (Test-Path $filename) {
-                        Remove-Item -Path $filename -Force -Recurse -ErrorAction Stop
+                "PowerShell-*.msi" {
+                    try {
+                        Start-Process msiexec.exe -Wait -ArgumentList "/i `"$filename`" /quiet"
+                        Write-Verbose "[$description] Installed"
+                    } catch {
+                        Write-Error "[$description] Failed: $($_.Exception.Message)"
+                    } finally {
+                        if (Test-Path $filename) {
+                            Remove-Item -Path $filename -Force -Recurse -ErrorAction Stop
+                        }
                     }
                 }
-            }
 
-            default {
-                Write-Warning "[$description] No handler for file: $filename"
+                "sonar-scanner-*.zip" {
+                    try {
+                        if (-not (Test-Path -Path $filepath)) {
+                            New-Item -ItemType Directory -Force -Path $filepath | Out-Null
+                        }
+
+                        Expand-Archive -LiteralPath $filename -DestinationPath $filepath -Force
+
+                        $source = Get-ChildItem -Path $filepath -Directory -Filter "sonar-scanner-*" | Select-Object -First 1
+                        Get-ChildItem -Path $source.FullName -Force | ForEach-Object {
+                            Copy-Item -Path $_.FullName -Destination $filepath -Recurse -Force -ErrorAction SilentlyContinue
+                        }
+                        Remove-Item -Path $source.FullName -Force -Recurse -ErrorAction Stop
+
+                        $envPath = Join-Path -Path $filepath -ChildPath "bin"
+                        if ($Env:Path -notlike "*${envPath}*") {
+                            $Env:Path += ";$envPath"
+                        }
+
+                        Write-Verbose "[$description] Extracted and installed to $filepath"
+                    } catch {
+                        Write-Error "[$description] Failed: $($_.Exception.Message)"
+                    } finally {
+                        if (Test-Path $filename) {
+                            Remove-Item -Path $filename -Force -Recurse -ErrorAction Stop
+                        }
+                    }
+                }
+
+                default {
+                    Write-Warning "[$description] No handler for file: $filename"
+                }
             }
         }
     }
+
+    end { }
 }
 
 # Workflow

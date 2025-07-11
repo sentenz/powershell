@@ -17,11 +17,11 @@ function Import-EnvironmentVariable {
 
     process {
         Read-Dotenv -FilePath $FilePath
-        $Env:ENV_MESSAGE = Get-Dotenv -VariableName "ENV_MESSAGE"
+        $Env:ENV = Get-Dotenv -VariableName "ENV"
     }
 
     end {
-        Write-Verbose "Env:ENV_MESSAGE = $Env:ENV_MESSAGE"
+        Write-Verbose "Env:ENV = $Env:ENV"
     }
 }
 

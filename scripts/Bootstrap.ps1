@@ -29,10 +29,12 @@ function Initialize-ScopeVariable {
     [CmdletBinding()]
     param ()
 
+    # See https://winget.ragerworks.com/ to search for winget packages
     $Script:WingetPackage = @(
         @{ Id = "ezwinports.make"        ; Info = "" },
-        @{ Id = "Kitware.Ninja"          ; Info = "" },
-        @{ Id = "ccache.ccache"          ; Info = "" },
+        @{ Id = "Task.Task"              ; Info = "" },
+        @{ Id = "Ninja-build.Ninja"      ; Info = "" },
+        @{ Id = "Ccache.Ccache"          ; Info = "" },
         @{ Id = "Python.Python.3.12"     ; Info = "" },
         @{ Id = "7zip.7zip"              ; Info = "" }
     )
@@ -82,7 +84,7 @@ function Install-WingetPackage {
     begin {
         # Ensure winget is available
         if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
-            Write-Error "Winget is not installed or not available in the PATH."
+            Write-Error "winget is not installed or not found in PATH."
             return
         }
     }
@@ -95,7 +97,7 @@ function Install-WingetPackage {
             try {
                 Write-Verbose "Installing Winget package: $($id)"
 
-                winget install --id $id --source winget --accept-package-agreements --accept-source-agreements --silent
+                winget install --id=$id -e --source machine --accept-package-agreements --accept-source-agreements --silent
             } catch {
                 Write-Warning "Failed to install package: $($id) - $($_.Exception.Message)"
             }
@@ -114,7 +116,7 @@ function Install-PipPackage {
     begin {
         # Ensure pip is available
         if (-not (Get-Command pip -ErrorAction SilentlyContinue)) {
-            Write-Error "Pip is not installed or not available in the PATH."
+            Write-Error "pip is not installed or not found in PATH."
             return
         }
 
@@ -138,9 +140,9 @@ function Install-PipPackage {
                 Write-Verbose "Installing Python package: $name"
 
                 if ($version) {
-                    pip install "$name==$version" --index-url $url
+                    pip install "$name==$version" --index-url $url --upgrade --no-user
                 } else {
-                    pip install $name --index-url $url
+                    pip install $name --index-url $url --upgrade --no-user
                 }
             } catch {
                 Write-Warning "Failed to install package: $($name) - $($_.Exception.Message)"
@@ -156,7 +158,7 @@ function Clear-PipCache {
     begin {
         # Ensure pip is available
         if (-not (Get-Command pip -ErrorAction SilentlyContinue)) {
-            Write-Error "Pip is not installed or not available in the PATH."
+            Write-Error "pip is not installed or not found in PATH."
             return
         }
     }
@@ -275,7 +277,6 @@ try {
     Import-EnvironmentVariable -Verbose
     Initialize-ScopeVariable
     Install-WingetPackage -Packages $Script:WingetPackage -Verbose
-    # NOTE c:\users\<user>\appdata\local\programs\python\python312\lib\site-packages
     Install-PipPackage -Packages $Script:PipPackage -Verbose
     Clear-PipCache
     Invoke-SetupDownload -Downloads $Script:Download -Verbose

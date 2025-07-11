@@ -39,7 +39,6 @@ function Initialize-CustomModule {
 		}
 	}
 }
-
 # Workflow
 
 try {
